@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finans Takip">
+<meta name="theme-color" content="#0d0f14">
+<title>Finans Takip</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161922;
+    --surface2: #1e2330;
+    --border: #2a3040;
+    --green: #00e676;
+    --green-dim: #00e67622;
+    --green-mid: #00e67644;
+    --red: #ff4d6d;
+    --red-dim: #ff4d6d22;
+    --blue: #4fc3f7;
+    --blue-dim: #4fc3f722;
+    --orange: #ffb347;
+    --orange-dim: #ffb34722;
+    --text: #e8eaf0;
+    --text-dim: #6b7590;
+    --accent: #7c6aff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; min-height:100vh; overflow-x:hidden; padding-bottom:40px; }
+
+  /* MONTH NAV */
+  .month-nav { display:flex; align-items:center; justify-content:center; gap:20px; padding:18px 24px 10px; position:sticky; top:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); }
+  .month-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text-dim); width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .month-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .month-label { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--text); min-width:130px; text-align:center; }
+
+  /* BALANCE CARD */
+  .balance-card { margin:18px 16px 0; background:linear-gradient(135deg,#141c2a 0%,#0d1420 100%); border:1px solid var(--green-mid); border-radius:20px; padding:22px 24px; text-align:center; position:relative; overflow:hidden; }
+  .balance-card::before { content:''; position:absolute; top:-40px; left:50%; transform:translateX(-50%); width:200px; height:200px; background:radial-gradient(circle,#00e67615 0%,transparent 70%); pointer-events:none; }
+  .balance-label { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+  .balance-amount { font-family:'Space Mono',monospace; font-size:36px; font-weight:700; color:var(--green); text-shadow:0 0 30px #00e67650; line-height:1; }
+  .balance-amount.negative { color:var(--red); text-shadow:0 0 30px #ff4d6d50; }
+  .balance-stats { display:flex; justify-content:center; gap:24px; margin-top:14px; }
+  .bstat { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .bstat-val { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; }
+  .bstat-val.inc { color:var(--green); }
+  .bstat-val.exp { color:var(--red); }
+  .bstat-label { font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+
+  /* DEBT STRIP */
+  .debt-strip { display:none; align-items:center; justify-content:center; gap:14px; margin:8px 16px 0; padding:6px 14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .debt-strip.visible { display:flex; }
+  .debt-strip-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-dim); }
+  .debt-strip-val { font-family:'Space Mono',monospace; font-size:12px; font-weight:700; }
+  .debt-strip-val.owe { color:var(--orange); }
+  .debt-strip-val.owed { color:var(--blue); }
+  .debt-strip-sep { color:var(--border); font-size:20px; line-height:1; }
+
+  /* DEBT TRIGGER */
+  .debt-trigger-wrap { display:flex; justify-content:center; padding:12px 16px 0; }
+  .debt-trigger-btn { background:linear-gradient(135deg,#1a1525 0%,#151020 100%); border:1px solid #3d2f6a; border-radius:12px; padding:10px 22px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all .18s; width:100%; max-width:420px; justify-content:center; }
+  .debt-trigger-btn:hover { border-color:var(--accent); box-shadow:0 0 20px #7c6aff20; }
+  .debt-trigger-icon { font-size:16px; }
+  .debt-trigger-label { font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); }
+  .debt-trigger-arrow { font-size:14px; color:var(--text-dim); transition:transform .2s; }
+  .debt-trigger-btn.open .debt-trigger-arrow { transform:rotate(90deg); }
+
+  /* DEBT PANEL */
+  .debt-panel-wrap { margin:10px 16px 0; max-height:0; overflow:hidden; transition:max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s; opacity:0; }
+  .debt-panel-wrap.open { max-height:700px; opacity:1; }
+  .debt-panel { background:var(--surface); border:1px solid #3d2f6a; border-radius:16px; overflow:hidden; }
+  .debt-panel-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:linear-gradient(135deg,#1a1525,#151020); }
+  .debt-tabs { display:flex; gap:6px; }
+  .debt-tab { padding:7px 13px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-dim); font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all .15s; }
+  .debt-tab.active-owe { background:var(--orange-dim); border-color:var(--orange); color:var(--orange); }
+  .debt-tab.active-owed { background:var(--blue-dim); border-color:var(--blue); color:var(--blue); }
+  .debt-tab.active-hist { background:#2a2040; border-color:#6b5aaa; color:#a98eff; }
+  .debt-paid-badge { font-size:9px; padding:2px 7px; border-radius:4px; background:var(--green-dim); border:1px solid var(--green); color:var(--green); font-family:'Syne',sans-serif; font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; }
+  .debt-item.paid-item .debt-amount { text-decoration:line-through; opacity:.6; }
+  .hist-type-badge { font-size:9px; padding:2px 6px; border-radius:4px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; }
+  .hist-type-badge.owe { background:var(--orange-dim); color:var(--orange); border:1px solid #ffb34740; }
+  .hist-type-badge.owed { background:var(--blue-dim); color:var(--blue); border:1px solid #4fc3f740; }
+
+  .debt-list { list-style:none; padding:4px 0; max-height:260px; overflow-y:auto; }
+  .debt-list::-webkit-scrollbar { width:4px; }
+  .debt-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+  .debt-item { display:flex; align-items:center; padding:11px 16px; gap:10px; border-bottom:1px solid #ffffff06; transition:background .12s; animation:slideIn .2s ease; }
+  .debt-item:hover { background:var(--surface2); }
+  .debt-item:last-child { border-bottom:none; }
+  .debt-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0; }
+  .debt-avatar.owe { background:var(--orange-dim); color:var(--orange); border:1px solid #ffb34740; }
+  .debt-avatar.owed { background:var(--blue-dim); color:var(--blue); border:1px solid #4fc3f740; }
+  .debt-info { flex:1; min-width:0; }
+  .debt-person { font-size:13px; font-weight:700; }
+  .debt-desc { font-size:10px; color:var(--text-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .debt-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+  .debt-amount { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; }
+  .debt-amount.owe { color:var(--orange); }
+  .debt-amount.owed { color:var(--blue); }
+  .debt-date { font-family:'Space Mono',monospace; font-size:9px; color:var(--text-dim); }
+  .debt-actions { display:flex; gap:4px; align-items:center; }
+  .debt-paid-btn { font-size:9px; padding:3px 8px; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; transition:all .15s; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+  .debt-paid-btn:hover { background:var(--green-dim); border-color:var(--green); color:var(--green); }
+  .debt-del { width:22px; height:22px; background:transparent; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; border-radius:6px; display:flex; align-items:center; justify-content:center; opacity:0; transition:all .15s; flex-shrink:0; }
+  .debt-item:hover .debt-del { opacity:1; }
+  .debt-del:hover { background:var(--red-dim); color:var(--red); }
+
+  /* MAIN GRID */
+  .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .panel-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .panel-title { font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .panel-title .dot { width:8px; height:8px; border-radius:50%; }
+  .dot-red { background:var(--red); box-shadow:0 0 8px var(--red); }
+  .dot-green { background:var(--green); box-shadow:0 0 8px var(--green); }
+  .add-btn { width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; transition:all .15s; line-height:1; }
+  .add-btn.red:hover { background:var(--red-dim); border-color:var(--red); color:var(--red); }
+  .add-btn.green:hover { background:var(--green-dim); border-color:var(--green); color:var(--green); }
+
+  .panel-list { list-style:none; max-height:260px; overflow-y:auto; padding:8px 0; }
+  .panel-list::-webkit-scrollbar { width:4px; }
+  .panel-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .tx-item { display:flex; align-items:center; padding:10px 16px; gap:10px; border-bottom:1px solid #ffffff08; cursor:pointer; transition:background .12s; animation:slideIn .2s ease; }
+  .tx-item:hover { background:var(--surface2); }
+  .tx-item:last-child { border-bottom:none; }
+  .tx-icon { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .tx-icon.red { background:var(--red-dim); }
+  .tx-icon.green { background:var(--green-dim); }
+  .tx-info { flex:1; min-width:0; }
+  .tx-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-date { font-family:'Space Mono',monospace; font-size:10px; color:var(--text-dim); margin-top:1px; }
+  .tx-amount { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; flex-shrink:0; }
+  .tx-amount.red { color:var(--red); }
+  .tx-amount.green { color:var(--green); }
+  .empty-state { padding:28px 16px; text-align:center; color:var(--text-dim); font-size:12px; letter-spacing:1px; }
+  .empty-state .emoji { font-size:26px; margin-bottom:8px; }
+  .tx-delete { width:22px; height:22px; background:transparent; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; border-radius:6px; display:flex; align-items:center; justify-content:center; opacity:0; transition:all .15s; flex-shrink:0; }
+  .tx-item:hover .tx-delete { opacity:1; }
+  .tx-delete:hover { background:var(--red-dim); color:var(--red); }
+
+  /* HESAP HAREKETLERİ */
+  .tx-section { margin:0 16px 20px; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .tx-section-header { padding:13px 16px; border-bottom:1px solid var(--border); font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-dim); }
+  .tx-section-list { padding:4px 0; max-height:200px; overflow-y:auto; }
+  .tx-section-list::-webkit-scrollbar { width:4px; }
+  .tx-section-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:#000000bb; z-index:999; display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; backdrop-filter:blur(4px); }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:24px 24px 0 0; padding:24px; width:100%; max-width:500px; transform:translateY(40px); transition:transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .modal-overlay.open .modal { transform:translateY(0); }
+  .handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+  .modal-title { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+  .field-group { margin-bottom:14px; }
+  .field-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; display:block; }
+  .field-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; outline:none; transition:border-color .15s; }
+  .field-input:focus { border-color:var(--accent); }
+  .field-input.red:focus { border-color:var(--red); }
+  .field-input.green:focus { border-color:var(--green); }
+  .field-input.orange:focus { border-color:var(--orange); }
+  .field-input.blue:focus { border-color:var(--blue); }
+  .modal-actions { display:flex; gap:10px; margin-top:18px; }
+  .btn { flex:1; padding:13px; border-radius:12px; border:none; cursor:pointer; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; transition:all .15s; }
+  .btn-cancel { background:var(--surface2); color:var(--text-dim); }
+  .btn-cancel:hover { color:var(--text); }
+  .btn-red { background:var(--red); color:#fff; }
+  .btn-red:hover { filter:brightness(1.15); }
+  .btn-green { background:var(--green); color:#000; }
+  .btn-green:hover { filter:brightness(1.15); }
+  .btn-orange { background:var(--orange); color:#000; }
+  .btn-orange:hover { filter:brightness(1.15); }
+  .btn-blue { background:var(--blue); color:#000; }
+  .btn-blue:hover { filter:brightness(1.15); }
+
+  .emoji-grid { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
+  .emoji-btn { width:38px; height:38px; background:var(--surface2); border:2px solid transparent; border-radius:10px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .emoji-btn:hover, .emoji-btn.selected { border-color:var(--accent); background:#7c6aff20; }
+
+  .dtype-wrap { display:flex; gap:8px; margin-bottom:14px; }
+  .dtype-btn { flex:1; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); cursor:pointer; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; transition:all .15s; text-align:center; }
+  .dtype-btn.sel-owe { border-color:var(--orange); background:var(--orange-dim); color:var(--orange); }
+  .dtype-btn.sel-owed { border-color:var(--blue); background:var(--blue-dim); color:var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- MONTH NAV -->
+<div class="month-nav">
+  <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+  <div class="month-label" id="monthLabel"></div>
+  <button class="month-btn" onclick="changeMonth(1)">›</button>
+</div>
+
+<!-- BALANCE CARD -->
+<div class="balance-card">
+  <div class="balance-label">ANA BAKİYE</div>
+  <div class="balance-amount" id="balanceDisplay">₺0,00</div>
+  <div class="balance-stats">
+    <div class="bstat"><div class="bstat-val inc" id="totalInc">₺0,00</div><div class="bstat-label">Gelir</div></div>
+    <div style="width:1px;background:var(--border)"></div>
+    <div class="bstat"><div class="bstat-val exp" id="totalExp">₺0,00</div><div class="bstat-label">Gider</div></div>
+  </div>
+</div>
+
+<!-- DEBT STRIP -->
+<div class="debt-strip" id="debtStrip">
+  <div class="debt-strip-item">🟡 <span>Borcum:</span><span class="debt-strip-val owe" id="stripOwe">₺0,00</span></div>
+  <span class="debt-strip-sep">·</span>
+  <div class="debt-strip-item">🔵 <span>Alacağım:</span><span class="debt-strip-val owed" id="stripOwed">₺0,00</span></div>
+</div>
+
+<!-- DEBT TRIGGER -->
+<div class="debt-trigger-wrap">
+  <button class="debt-trigger-btn" id="debtTriggerBtn" onclick="toggleDebtPanel()">
+    <span class="debt-trigger-icon">🤝</span>
+    <span class="debt-trigger-label">Borç Takip</span>
+    <span class="debt-trigger-arrow">›</span>
+  </button>
+</div>
+
+<!-- DEBT PANEL -->
+<div class="debt-panel-wrap" id="debtPanelWrap">
+  <div class="debt-panel">
+    <div class="debt-panel-header">
+      <div class="debt-tabs">
+        <button class="debt-tab active-owe" id="tabOwe" onclick="switchDebtTab('owe')">🟡 Borcum</button>
+        <button class="debt-tab" id="tabOwed" onclick="switchDebtTab('owed')">🔵 Alacağım</button>
+        <button class="debt-tab" id="tabHist" onclick="switchDebtTab('hist')">📜 Geçmiş</button>
+      </div>
+      <button class="add-btn" id="debtAddBtn" style="border-color:#3d2f6a;color:var(--accent)" onclick="openDebtModal()">+</button>
+    </div>
+    <ul class="debt-list" id="debtList">
+      <li class="empty-state"><div class="emoji">🤝</div>Borç kaydı yok</li>
+    </ul>
+  </div>
+</div>
+
+<!-- TWO COLUMN -->
+<div class="main-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><span class="dot dot-red"></span>Giderler</div>
+      <button class="add-btn red" onclick="openModal('expense')">+</button>
+    </div>
+    <ul class="panel-list" id="expenseList"><li class="empty-state"><div class="emoji">💸</div>Gider yok</li></ul>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><span class="dot dot-green"></span>Gelirler</div>
+      <button class="add-btn green" onclick="openModal('income')">+</button>
+    </div>
+    <ul class="panel-list" id="incomeList"><li class="empty-state"><div class="emoji">💰</div>Gelir yok</li></ul>
+  </div>
+</div>
+
+<!-- HESAP HAREKETLERİ -->
+<div class="tx-section">
+  <div class="tx-section-header">📋 Hesap Hareketleri</div>
+  <div class="tx-section-list" id="allTxList"><div class="empty-state"><div class="emoji">📄</div>Bu ay hareket yok</div></div>
+</div>
+
+<!-- TX MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalIfOutside(event)">
+  <div class="modal">
+    <div class="handle"></div>
+    <div class="modal-title" id="modalTitle">➕ Gider Ekle</div>
+    <div class="field-group">
+      <label class="field-label">Kategori / Açıklama</label>
+      <div class="emoji-grid" id="emojiGrid"></div>
+      <input class="field-input" id="txName" type="text" placeholder="Neye gitti?">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Tutar (₺)</label>
+      <input class="field-input" id="txAmount" type="number" placeholder="0,00" step="0.01" min="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">İptal</button>
+      <button class="btn" id="confirmBtn" onclick="addTransaction()">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEBT MODAL -->
+<div class="modal-overlay" id="debtModalOverlay" onclick="closeDebtModalOutside(event)">
+  <div class="modal">
+    <div class="handle"></div>
+    <div class="modal-title" id="debtModalTitle">🤝 Borç Ekle</div>
+    <div class="dtype-wrap">
+      <button class="dtype-btn sel-owe" id="dtypeOwe" onclick="selectDebtType('owe')">🟡 Ben borçluyum</button>
+      <button class="dtype-btn" id="dtypeOwed" onclick="selectDebtType('owed')">🔵 Bende borç var</button>
+    </div>
+    <div class="field-group">
+      <label class="field-label" id="debtPersonLabel">Kime borcum var?</label>
+      <input class="field-input orange" id="debtPerson" type="text" placeholder="Kişi adı">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Açıklama (isteğe bağlı)</label>
+      <input class="field-input orange" id="debtDesc" type="text" placeholder="Neden? (kira, yemek...)">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Tutar (₺)</label>
+      <input class="field-input orange" id="debtAmount" type="number" placeholder="0,00" step="0.01" min="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeDebtModal()">İptal</button>
+      <button class="btn btn-orange" id="debtConfirmBtn" onclick="addDebt()">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const EXPENSE_EMOJIS = ['🛒','🍽️','🚗','💊','📱','🏠','☕','🎬','👕','✈️','🎓','💡','🔧','🐾','💳'];
+const INCOME_EMOJIS  = ['💼','💰','🏦','📈','🎁','💻','🤝','🏪','📦','🎯','✅','⭐'];
+
+let currentYear=new Date().getFullYear(), currentMonth=new Date().getMonth();
+let currentType='expense', selectedEmoji='';
+let currentDebtType='owe', currentDebtTab='owe', debtPanelOpen=false;
+
+let data  = JSON.parse(localStorage.getItem('finans_data')  ||'{}');
+let debts = JSON.parse(localStorage.getItem('finans_debts') ||'[]');
+
+function getMonthData(){
+  if(!data[currentYear]) data[currentYear]={};
+  if(!data[currentYear][currentMonth]) data[currentYear][currentMonth]={expenses:[],incomes:[]};
+  return data[currentYear][currentMonth];
+}
+function saveData(){ localStorage.setItem('finans_data', JSON.stringify(data)); }
+function saveDebts(){ localStorage.setItem('finans_debts', JSON.stringify(debts)); }
+function formatTL(n){ return '₺'+Math.abs(n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function initials(name){ return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+
+function changeMonth(dir){
+  currentMonth+=dir;
+  if(currentMonth>11){currentMonth=0;currentYear++;}
+  if(currentMonth<0){currentMonth=11;currentYear--;}
+  render();
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent=MONTHS[currentMonth]+' '+currentYear;
+  const md=getMonthData();
+  const totalInc=md.incomes.reduce((s,t)=>s+t.amount,0);
+  const totalExp=md.expenses.reduce((s,t)=>s+t.amount,0);
+  const balance=totalInc-totalExp;
+  const balEl=document.getElementById('balanceDisplay');
+  balEl.textContent=(balance<0?'-':'')+formatTL(balance);
+  balEl.className='balance-amount'+(balance<0?' negative':'');
+  document.getElementById('totalInc').textContent='+'+formatTL(totalInc);
+  document.getElementById('totalExp').textContent='-'+formatTL(totalExp);
+  renderList('expenseList',md.expenses,'expense');
+  renderList('incomeList',md.incomes,'income');
+  renderAllTx(md);
+  renderDebtStrip();
+  renderDebtList();
+}
+
+function renderList(elId,items,type){
+  const ul=document.getElementById(elId);
+  if(!items.length){
+    ul.innerHTML=`<li class="empty-state"><div class="emoji">${type==='expense'?'💸':'💰'}</div>${type==='expense'?'Gider yok':'Gelir yok'}</li>`;
+    return;
+  }
+  ul.innerHTML=items.slice().reverse().map((t,ri)=>{
+    const i=items.length-1-ri;
+    const cls=type==='expense'?'red':'green';
+    const sign=type==='expense'?'-':'+';
+    return `<li class="tx-item">
+      <div class="tx-icon ${cls}">${t.emoji||(type==='expense'?'💸':'💰')}</div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-date">${t.date}</div></div>
+      <div class="tx-amount ${cls}">${sign}${formatTL(t.amount)}</div>
+      <button class="tx-delete" onclick="deleteTx('${type}',${i},event)">✕</button>
+    </li>`;
+  }).join('');
+}
+
+function renderAllTx(md){
+  const all=[...md.expenses.map(t=>({...t,type:'expense'})),...md.incomes.map(t=>({...t,type:'income'}))].sort((a,b)=>new Date(b.dateRaw)-new Date(a.dateRaw));
+  const c=document.getElementById('allTxList');
+  if(!all.length){c.innerHTML=`<div class="empty-state"><div class="emoji">📄</div>Bu ay hareket yok</div>`;return;}
+  c.innerHTML=all.map(t=>{
+    const cls=t.type==='expense'?'red':'green';
+    const sign=t.type==='expense'?'-':'+';
+    return `<div class="tx-item">
+      <div class="tx-icon ${cls}">${t.emoji||(t.type==='expense'?'💸':'💰')}</div>
+      <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-date">${t.date}</div></div>
+      <div class="tx-amount ${cls}">${sign}${formatTL(t.amount)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── DEBT STRIP ──
+function renderDebtStrip(){
+  const totalOwe =debts.filter(d=>d.type==='owe' &&!d.paid).reduce((s,d)=>s+d.amount,0);
+  const totalOwed=debts.filter(d=>d.type==='owed'&&!d.paid).reduce((s,d)=>s+d.amount,0);
+  document.getElementById('stripOwe').textContent=formatTL(totalOwe);
+  document.getElementById('stripOwed').textContent=formatTL(totalOwed);
+  const strip=document.getElementById('debtStrip');
+  strip.className='debt-strip'+(totalOwe+totalOwed>0?' visible':'');
+}
+
+// ── DEBT PANEL ──
+function toggleDebtPanel(){
+  debtPanelOpen=!debtPanelOpen;
+  document.getElementById('debtPanelWrap').classList.toggle('open',debtPanelOpen);
+  document.getElementById('debtTriggerBtn').classList.toggle('open',debtPanelOpen);
+}
+
+function switchDebtTab(tab){
+  currentDebtTab=tab;
+  document.getElementById('tabOwe').className ='debt-tab'+(tab==='owe' ?' active-owe' :'');
+  document.getElementById('tabOwed').className='debt-tab'+(tab==='owed'?' active-owed':'');
+  document.getElementById('tabHist').className='debt-tab'+(tab==='hist'?' active-hist':'');
+  // hide + button on history tab
+  document.getElementById('debtAddBtn').style.display = tab==='hist'?'none':'flex';
+  renderDebtList();
+}
+
+function renderDebtList(){
+  const list=document.getElementById('debtList');
+
+  if(currentDebtTab==='hist'){
+    const paid=debts.filter(d=>d.paid);
+    if(!paid.length){
+      list.innerHTML=`<li class="empty-state"><div class="emoji">📜</div>Henüz geçmiş yok</li>`;
+      return;
+    }
+    list.innerHTML=paid.slice().reverse().map(d=>{
+      const ri=debts.indexOf(d);
+      const cls=d.type==='owe'?'owe':'owed';
+      const sign=d.type==='owe'?'-':'+';
+      const typeLabel=d.type==='owe'?'Borcum':'Alacağım';
+      return `<li class="debt-item paid-item">
+        <div class="debt-avatar ${cls}">${initials(d.person)}</div>
+        <div class="debt-info">
+          <div class="debt-person">${d.person}</div>
+          <div class="debt-desc">${d.desc||'—'}</div>
+        </div>
+        <div class="debt-right">
+          <div class="debt-amount ${cls}">${sign}${formatTL(d.amount)}</div>
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+            <span class="hist-type-badge ${cls}">${typeLabel}</span>
+            <span class="debt-paid-badge">✓ Ödendi</span>
+          </div>
+          <div class="debt-date">${d.paidDate||d.date}</div>
+          <button class="debt-del" style="opacity:1;margin-top:2px" onclick="deleteDebt(${ri},event)">✕</button>
+        </div>
+      </li>`;
+    }).join('');
+    return;
+  }
+
+  const filtered=debts.filter(d=>d.type===currentDebtTab&&!d.paid);
+  if(!filtered.length){
+    list.innerHTML=`<li class="empty-state"><div class="emoji">${currentDebtTab==='owe'?'🙏':'💌'}</div>${currentDebtTab==='owe'?'Borcun yok 🎉':'Bekleyen alacak yok'}</li>`;
+    return;
+  }
+  list.innerHTML=filtered.map(d=>{
+    const ri=debts.indexOf(d);
+    const cls=d.type==='owe'?'owe':'owed';
+    const sign=d.type==='owe'?'-':'+';
+    return `<li class="debt-item">
+      <div class="debt-avatar ${cls}">${initials(d.person)}</div>
+      <div class="debt-info"><div class="debt-person">${d.person}</div><div class="debt-desc">${d.desc||'—'}</div></div>
+      <div class="debt-right">
+        <div class="debt-amount ${cls}">${sign}${formatTL(d.amount)}</div>
+        <div class="debt-date">${d.date}</div>
+        <div class="debt-actions">
+          <button class="debt-paid-btn" onclick="markPaid(${ri})">✓ Ödendi</button>
+          <button class="debt-del" onclick="deleteDebt(${ri},event)">✕</button>
+        </div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+// ── DEBT MODAL ──
+function openDebtModal(){
+  currentDebtType=currentDebtTab;
+  updateDebtUI();
+  document.getElementById('debtPerson').value='';
+  document.getElementById('debtDesc').value='';
+  document.getElementById('debtAmount').value='';
+  document.getElementById('debtModalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('debtPerson').focus(),300);
+}
+function selectDebtType(t){ currentDebtType=t; updateDebtUI(); }
+function updateDebtUI(){
+  const isOwe=currentDebtType==='owe';
+  document.getElementById('dtypeOwe').className ='dtype-btn'+(isOwe?' sel-owe':'');
+  document.getElementById('dtypeOwed').className='dtype-btn'+(!isOwe?' sel-owed':'');
+  document.getElementById('debtPersonLabel').textContent=isOwe?'Kime borcum var?':'Kimde alacağım var?';
+  const c=isOwe?'orange':'blue';
+  document.getElementById('debtPerson').className=`field-input ${c}`;
+  document.getElementById('debtDesc').className  =`field-input ${c}`;
+  document.getElementById('debtAmount').className=`field-input ${c}`;
+  document.getElementById('debtConfirmBtn').className=`btn btn-${c}`;
+  document.getElementById('debtModalTitle').textContent=isOwe?'🟡 Borç Ekle':'🔵 Alacak Ekle';
+}
+function closeDebtModal(){ document.getElementById('debtModalOverlay').classList.remove('open'); }
+function closeDebtModalOutside(e){ if(e.target===document.getElementById('debtModalOverlay')) closeDebtModal(); }
+
+function addDebt(){
+  const person=document.getElementById('debtPerson').value.trim();
+  const desc  =document.getElementById('debtDesc').value.trim();
+  const amount=parseFloat(document.getElementById('debtAmount').value);
+  if(!person||isNaN(amount)||amount<=0){
+    if(!person) document.getElementById('debtPerson').style.borderColor='var(--red)';
+    if(isNaN(amount)||amount<=0) document.getElementById('debtAmount').style.borderColor='var(--red)';
+    return;
+  }
+  const now=new Date();
+  debts.push({type:currentDebtType,person,desc,amount,date:now.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'}),paid:false});
+  saveDebts();
+  closeDebtModal();
+  switchDebtTab(currentDebtType);
+  renderDebtStrip();
+}
+function markPaid(idx){
+  const now=new Date();
+  debts[idx].paid=true;
+  debts[idx].paidDate=now.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  saveDebts(); renderDebtStrip(); renderDebtList();
+}
+function deleteDebt(idx,e){ e.stopPropagation(); debts.splice(idx,1); saveDebts(); renderDebtStrip(); renderDebtList(); }
+
+// ── TX MODAL ──
+function openModal(type){
+  currentType=type; selectedEmoji='';
+  const isExp=type==='expense';
+  document.getElementById('modalTitle').textContent=isExp?'➕ Gider Ekle':'➕ Gelir Ekle';
+  document.getElementById('confirmBtn').className=isExp?'btn btn-red':'btn btn-green';
+  document.getElementById('txName').className  =isExp?'field-input red':'field-input green';
+  document.getElementById('txAmount').className=isExp?'field-input red':'field-input green';
+  const emojis=isExp?EXPENSE_EMOJIS:INCOME_EMOJIS;
+  document.getElementById('emojiGrid').innerHTML=emojis.map(e=>`<button class="emoji-btn" onclick="selectEmoji(this,'${e}')">${e}</button>`).join('');
+  document.getElementById('txName').value='';
+  document.getElementById('txAmount').value='';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('txName').focus(),300);
+}
+function selectEmoji(btn,emoji){
+  document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected'); selectedEmoji=emoji;
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalIfOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+function addTransaction(){
+  const name  =document.getElementById('txName').value.trim();
+  const amount=parseFloat(document.getElementById('txAmount').value);
+  if(!name||isNaN(amount)||amount<=0){
+    if(!name) document.getElementById('txName').style.borderColor='var(--red)';
+    if(isNaN(amount)||amount<=0) document.getElementById('txAmount').style.borderColor='var(--red)';
+    return;
+  }
+  const now=new Date();
+  const md=getMonthData();
+  const tx={name,amount,emoji:selectedEmoji,date:now.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'}),dateRaw:now.toISOString()};
+  if(currentType==='expense') md.expenses.push(tx);
+  else md.incomes.push(tx);
+  saveData(); closeModal(); render();
+}
+function deleteTx(type,idx,e){
+  e.stopPropagation();
+  const md=getMonthData();
+  if(type==='expense') md.expenses.splice(idx,1);
+  else md.incomes.splice(idx,1);
+  saveData(); render();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(document.getElementById('modalOverlay').classList.contains('open')) addTransaction();
+    if(document.getElementById('debtModalOverlay').classList.contains('open')) addDebt();
+  }
+  if(e.key==='Escape'){ closeModal(); closeDebtModal(); }
+});
+
+render();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
